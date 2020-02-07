@@ -2,129 +2,120 @@ import arviz as az
 import pandas as pd
 import numpy as np
 import quilt
-from equilibrator_api import ccache
 import cmdstanpy
 from collections import namedtuple
 from typing import Dict, Any, Union, Iterable
+import os
+
+PATHS = {
+    'measurements': 'data/measurements.csv',
+    'stoichiometry': 'data/stoichiometry.csv',
+    'group_incidence': 'data/group_incidence.csv',
+    'model': 'model_nc.stan'
+}
 
 
-class InputData():
-    def __init__(
-        self,
-        normalised_measurements,
-        stoichiometry,
-        group_incidence_matrix,
-        qs,
-        rs,
-        rinvs,
-        qg,
-        rg,
-        rinvg
-    ):
-        self.normalised_measurements = normalised_measurements
-        self.stoichiometry = stoichiometry
-        self.group_incidence_matrix = group_incidence_matrix
-        self.qs = qs
-        self.rs = rs
-        self.rinvs = rinvs
-        self.qg = qg
-        self.rg = rg
-        self.rinvg = rinvg
-        self.N_compound, self.N_reaction = self.stoichiometry.shape
-        _, self.N_group = group_incidence_matrix.shape
-        
+def standardise(s):
+    """Subtract a pd.Series's mean and divide by the standard deviation."""
+    return s.subtract(s.mean()).div(s.std())
 
-def get_data(install=False):
-    if install:
-        quilt.install("equilibrator/component_contribution", force=True)
-    pkg = quilt.load("equilibrator/component_contribution")
-    S = pkg.parameters.train_S()
-    G = pkg.parameters.train_G()
-    qs, rs = np.linalg.qr(S.T)
-    qg, rg = np.linalg.qr(G)
-    rpinvs = np.linalg.pinv(rs)
-    rpinvg = np.linalg.pinv(rg)
-    rpinvs_approx = np.where(rpinvs > 0.000000001, rpinvs, np.zeros(rpinvs.shape))
-    rpinvg_approx = np.where(rpinvg > 0.000000001, rpinvg, np.zeros(rpinvg.shape))
-    normalised_measurements = pd.Series(pkg.parameters.train_b(), index=S.columns)
-    return InputData(
-        normalised_measurements,
-        S,
-        G,
-        qs,
-        rs,
-        rpinvs_approx,
-        qg,
-        rg,
-        rpinvg_approx
-    )
-
-
-def get_stan_input(
-        data: InputData,
-        likelihood: bool = True
-) -> Dict[str, Union[int, float, np.array]]:
+def prepare_data(measurements, S, G, likelihood=True):
+    """Get full model input."""
     return {
-        'N_reaction': data.N_reaction,
-        'N_compound': data.N_compound,
-        'N_group': data.N_group,
-        'standard_delta_g_measured': data.normalised_measurements.values / 100,
-        'ST': data.stoichiometry.T.values,
-        'G': data.group_incidence_matrix.values,
-        'QST': data.qs,
-        'QG': data.qg,
-        'RinvS': data.rinvs,
-        'RinvG': data.rinvg,
+        'N_measurement': len(measurements),
+        'N_reaction': S.shape[1],
+        'N_compound': S.shape[0],
+        'N_group': G.shape[1],
+        'y': measurements['standard_dg'].pipe(standardise).values,
+        'rxn_ix': measurements['reaction_code'].values,
         'likelihood': int(likelihood),
+        'S': S.values.tolist(),
+        'G': G.values.tolist()
     }
-    
-
-def fit_model(data, likelihood=True, model_name='model'):
-    stan_input = get_stan_input(data)
-    cmdstanpy.utils.rdump('input_data.rdump', stan_input)
-    model = cmdstanpy.CmdStanModel(model_name + '.stan')
-    fit = model.sample(
-        stan_input,
-        output_dir='.',
-        save_warmup=True,
-        warmup_iters=200,
-        sampling_iters=200
-    )
-    return fit
 
 
-def get_latest_model_stem(model_name=None):
-    if model_name is None:
-        model_name = 'model'
-    csv_filepaths = [i for i in os.listdir('.') if i[-4:] == '.csv']
+def prepare_toy_data(measurements_in, S_in, G_in, likelihood=True):
+    """
+    Get model input for the first twenty reaction in the stoichiometric
+    matrix.
+    """
+    S = S_in.iloc[:, :20].mask(lambda df: df == 0).stack().unstack().fillna(0).copy()
+    S.columns = map(int, S.columns)
+    G_in.index = map(int, G_in.index)
+    G = G_in.loc[S.index]
+    measurements = measurements_in.loc[lambda df: df['reaction_code'].isin(S.columns)].copy()
+    new_rxn_codes = dict(zip(S.columns, range(1, len(S.columns) + 1)))
+    measurements['new_reaction_code'] = measurements['reaction_code'].map(new_rxn_codes)
+    return {
+        'N_measurement': len(measurements),
+        'N_reaction': S.shape[1],
+        'N_compound': S.shape[0],
+        'N_group': G.shape[1],
+        'y': measurements['standard_dg'].pipe(standardise).values,
+        'rxn_ix': measurements['new_reaction_code'].values,
+        'likelihood': int(likelihood),
+        'S': S.values.tolist(),
+        'G': G.values.tolist()
+    }
+
+
+def get_latest_model_stem(model_path):
+    """Find the filename up to '-n.csv' of the most recent cmdstan output."""
+    model_name = model_path.split('.')[0]
+    csv_filepaths = [
+        i for i in os.listdir('.')
+        if i[-4:] == '.csv' and i[:len(model_name)] == model_name
+    ]
     timestamp = str(max(map(lambda s: int(s.split('-')[1]), csv_filepaths)))
     return model_name + '-' + timestamp
 
 
-def get_infd(model_stem):
+def get_infd(model_path, data_in):
+    """Get an arviz InferenceData object."""
+    model_stem = get_latest_model_stem(model_path)
     paths = [f'{model_stem}-{str(i)}.csv' for i in range(1, 5)]
     return az.from_cmdstan(
         posterior=paths,
-        posterior_predictive='standard_delta_g',
         observed_data='./input_data.rdump',
-        observed_data_var='standard_delta_g_measured',
+        observed_data_var='y',
         coords={
-            'reaction_id': data.stoichiometry.columns,
-            'compound_id': data.stoichiometry.index
+            'reaction_id': range(1, len(data_in['S'][0]) + 1),
+            'compound_id': range(1, len(data_in['S']) + 1),
+            'group_id': range(1, len(data_in['G'][0]) + 1)
         },
         dims={
+            'fe_z': ['compound_id'],
+            'gfe_z': ['group_id'],
             'formation_energy': ['compound_id'],
             'standard_delta_g': ['reaction_id'],
-            'standard_delta_g_measured': ['reaction_id']
         }
     )
 
+
 if __name__ == '__main__':
-    model_name = 'model'
-    likelihood = True
-    data = get_data()
-    fit = fit_model(data, likelihood=likelihood, model_name=model_name)
+    # load data
+    measurements = pd.read_csv(PATHS['measurements'], index_col=0)
+    S = pd.read_csv(PATHS['stoichiometry'], index_col=0)
+    G = pd.read_csv(PATHS['group_incidence'], index_col=0)
+    # get model input
+    data = prepare_toy_data(measurements, S, G, likelihood=True)
+    # save model input
+    cmdstanpy.utils.jsondump('input_data.json', data)
+    # compile model
+    model = cmdstanpy.CmdStanModel(PATHS['model'])
+    # sample
+    fit = model.sample(
+        data,
+        output_dir='.',
+        save_warmup=True,
+        warmup_iters=2000,
+        sampling_iters=500,
+        max_treedepth=15,
+        metric='dense'
+    )
+    # diagnose
     print(fit.diagnose())
-    infd = get_infd(get_latest_model_stem())
+    # get and save InferenceData
+    infd = get_infd(PATHS['model'], data)
     infd.to_netcdf('infd.nd')
 
