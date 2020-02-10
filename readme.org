@@ -1,7 +1,7 @@
 #+TITLE: Statistical models of biochemical thermodynamics
 
-This repository contains code and data for inferring the thermodynamic
-properties biochemical reactions from experiments.
+This repository contains code and data for inferring thermodynamic properties
+of biochemical reactions from experiments.
 
 
 * Big picture
@@ -19,8 +19,7 @@ inference.
 * Running the model
 The modelling is done through the following python scripts:
 
-- ~fetch_data.py~ fetches input data and writes it to the ~data~
-  directory.
+- ~fetch_data.py~ fetches input data and writes it to the ~data~ directory.
 - ~prepare_data.py~ reads files from the ~data~ directory and writes a ~.json~
   file that can be used as an input for cmdstanpy.
 - ~sample.py~ reads ~json~ files (data and optionally initial parameter values)
@@ -38,7 +37,7 @@ Python package dependencies:
 - component-contribution (only used in ~fetch_data.py~)
 
 
-* A bit more detail about thermodynamics
+* A bit more detail about biochemical thermodynamics
 It is possible to predict unmeasured reactions due to the following two helpful
 principles.
 
@@ -54,6 +53,8 @@ formation energy of a compound that is composed of chemical groups is
 approximately the sum of the formation energies of those components. I.e.
 
 \Delta_fG \approx \sum_{groups}\Delta_gG 
+
+For more about this topic check out [[http://equilibrator.weizmann.ac.il/static/classic_rxns/index.html][this great documentation]].
 
 
 * Statistical model
