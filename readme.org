@@ -36,7 +36,7 @@ energy of any reaction is related to the formation energies (i.e. the energy
 stored or released by creating the compounds out of elements) of its products
 and substrates:
 
-\Delta_rG = \frac{\sum_{products}\Delta_fG}{\sum_{substrates} \Delta_fG}
+\Delta_rG = \sum_{products}\Delta_fG \div \sum_{substrates} \Delta_fG
 
 The second helpful principle is called group additivity. It says that the
 formation energy of a compound that is composed of chemical groups is
@@ -50,9 +50,9 @@ approximately the sum of the formation energies of those components. I.e.
 Measurements of standard delta g of reaction are modelled as depending on
 compound formation energies via the following regression model:
 
-\Delta_rG_{obs} \sim N(\hat{\Delta_rG}[measurement index], \sigma)
+\Delta_rG_{obs} \sim N(\Delta_rG[measurement index], \sigma)
 
-\hat{\Delta_rG} = S^{T}\Delta_fG
+\Delta_rG = S^{T}\Delta_fG
 
 where
 - S is a stoichiometric matrix with rows representing compounds and
@@ -64,16 +64,16 @@ columns representing reactions
   reaction).
 - \sigma is a model parameter representing the unknown accuracy of the
   measurements.
-- [measurement index] maps reactions' positions in \hat{\Delta_rG} to
+- [measurement index] maps reactions' positions in \Delta_rG to
   their positions in \Delta_rG_{obs}.
   
 The group additivity principle is incorporated with the following prior
 distribution for compound formation energies:
 
-\Delta_fG &\sim N(\mathcal{G}\Delta_gG, \tau)
+\Delta_fG &\sim N(\mathbf{G}\Delta_gG, \tau)
 
 where
-- \mathcal{G} is group incidence matrix specifying how compounds decompose
+- \mathbf{G} is group incidence matrix specifying how compounds decompose
   into groups.
 - \Delta_gG is a vector of of model parameters representing unknown group
   formation energies.
