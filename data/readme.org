@@ -1,0 +1,15 @@
+#+TITLE: Data files
+
+This folder contains data files.
+
+The subfolder ~component_contribution~ has files copied from the
+[[https://gitlab.com/equilibrator/component-contribution][~component-contribution~]] repository.
+
+Files with the extension ~.csv~ are outputs of the script ~fetch_data.py~ from
+the parent directory.
+
+Files with names like ~input_data.json~ are outputs of the script
+~prepare_data.py~ from the parent directory, and specify inputs to Stan models.
+
+There may also be files with names like ~init.json~ which contain initial
+values for parameters.
