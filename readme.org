@@ -6,11 +6,11 @@ properties biochemical reactions from experiments.
 
 * Big picture
 The aim is to predict the amount of energy stored or released by some
-biochemical reactions (i.e. their Gibbs free energy of reaction or $\Delta_rG$)
+biochemical reactions (i.e. their Gibbs free energy of reaction or \Delta_rG)
 based on measurements. 
 
 Noor et al. (2013) explain how, by exploiting structural information, it is
-possible to make reliable predictions of $\Delta_rG$ values for reactions that
+possible to make reliable predictions of \Delta_rG values for reactions that
 haven't been directly measured.
 
 This project aims to build on Noor et al.'s work by using Bayesian
@@ -35,17 +35,14 @@ The first, which follows from thermodynamic principles, is that the Gibbs free
 energy of any reaction is related to the formation energies (i.e. the energy
 stored or released by creating the compounds out of elements) of its products
 and substrates:
-\begin{equation*}
+
 \Delta_rG = \frac{\sum_{products}\Delta_fG}{\sum_{substrates} \Delta_fG}
-\end{equation*}
 
 The second helpful principle is called group additivity. It says that the
 formation energy of a compound that is composed of chemical groups is
 approximately the sum of the formation energies of those components. I.e.
 
-\begin{equation*}
 \Delta_fG \approx \sum_{groups}\Delta_gG 
-\end{equation*}
 
 
 * Statistical model
@@ -53,37 +50,34 @@ approximately the sum of the formation energies of those components. I.e.
 Measurements of standard delta g of reaction are modelled as depending on
 compound formation energies via the following regression model:
 
-\begin{align*}
-\Delta_rG_{obs} &\sim N(\hat{\Delta_rG}[measurement\ index], \sigma) \\
-\hat{\Delta_rG} &= S^{T}\Delta_fG
-\end{align*}
+\Delta_rG_{obs} \sim N(\hat{\Delta_rG}[measurement index], \sigma)
+
+\hat{\Delta_rG} = S^{T}\Delta_fG
 
 where
-- $S$ is a stoichiometric matrix with rows representing compounds and
+- S is a stoichiometric matrix with rows representing compounds and
 columns representing reactions
-- $\Delta_fG$ is a vector of model parameters representing the unknown Gibbs
+- \Delta_fG is a vector of model parameters representing the unknown Gibbs
   free energy of formation for each compound.
-- $\Delta_rG_{obs}$ is a vector representing standard-condition measurements of
-  Gibbs free energy of reaction for reactions in $S$ (not necessarily every
+- \Delta_rG_{obs} is a vector representing standard-condition measurements of
+  Gibbs free energy of reaction for reactions in S (not necessarily every
   reaction).
-- $\sigma$ is a model parameter representing the unknown accuracy of the
+- \sigma is a model parameter representing the unknown accuracy of the
   measurements.
-- $[measurement\ index]$ maps reactions' positions in $\hat{\Delta_rG}$ to
-  their positions in $\Delta_rG_{obs}$.
+- [measurement index] maps reactions' positions in \hat{\Delta_rG} to
+  their positions in \Delta_rG_{obs}.
   
 The group additivity principle is incorporated with the following prior
 distribution for compound formation energies:
 
-\begin{equation*}
-\Delta_{f}G &\sim N(\mathcal{G}\Delta_{g}G, \tau)
-\end{equation*}
+\Delta_fG &\sim N(\mathcal{G}\Delta_gG, \tau)
 
 where
-- $\mathcal{G}$ is group incidence matrix specifying how compounds decompose
+- \mathcal{G} is group incidence matrix specifying how compounds decompose
   into groups.
-- $\Delta_gG$ is a vector of of model parameters representing unknown group
+- \Delta_gG is a vector of of model parameters representing unknown group
   formation energies.
-- $tau$ is a model parameter representing the unknown extent to which compound
+- tau is a model parameter representing the unknown extent to which compound
   formation energies tend to deviate from the group additivity prediction.
   
 
@@ -102,5 +96,5 @@ The input is follows
 * References
 - Noor, E., Haraldsd\'ottir, Hulda S., Milo, R., & Fleming,
   R. M. T. (2013). Consistent Estimation of Gibbs Energy Using Component
-  Contributions. PLoS Computational Biology, 9(7),
-  1003098. http://dx.doi.org/10.1371/journal.pcbi.1003098
+  Contributions. PLoS Computational Biology,
+  9(7), 1003098. http://dx.doi.org/10.1371/journal.pcbi.1003098
