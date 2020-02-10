@@ -70,10 +70,10 @@ columns representing reactions
 The group additivity principle is incorporated with the following prior
 distribution for compound formation energies:
 
-\Delta_fG &\sim N(\mathbf{G}\Delta_gG, \tau)
+\Delta_fG &\sim N(*G*\Delta_gG, \tau)
 
 where
-- \mathbf{G} is group incidence matrix specifying how compounds decompose
+- *G* is group incidence matrix specifying how compounds decompose
   into groups.
 - \Delta_gG is a vector of of model parameters representing unknown group
   formation energies.
