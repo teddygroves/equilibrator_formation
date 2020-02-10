@@ -19,7 +19,8 @@ inference.
 * Running the model
 The modelling is done through the following python scripts:
 
-- ~fetch_data.py~ fetches input data and writes it to the ~data~ directory
+- ~fetch_data.py~ fetches input data and writes it to the ~data~
+  directory.
 - ~prepare_data.py~ reads files from the ~data~ directory and writes a ~.json~
   file that can be used as an input for cmdstanpy.
 - ~sample.py~ reads ~json~ files (data and optionally initial parameter values)
@@ -33,8 +34,8 @@ Python package dependencies:
 - cmdstanpy
 - pandas
 - numpy
-- quilt
-- component-contribution
+- quilt (only used in ~fetch_data.py~)
+- component-contribution (only used in ~fetch_data.py~)
 
 
 * A bit more detail about thermodynamics
