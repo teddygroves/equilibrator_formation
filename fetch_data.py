@@ -1,9 +1,8 @@
+"""Fetch component contribution data from quilt and put it in local csv files."""
+
+
 import pandas as pd
-import logging
 import quilt
-from equilibrator_api import ccache
-from equilibrator_cache.reaction import Reaction
-from component_contribution.training_data import FullTrainingData
 from component_contribution.linalg import LINALG
 
 MEASUREMENT_COLS = [

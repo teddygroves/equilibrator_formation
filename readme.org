@@ -26,6 +26,16 @@ The modelling is done through the following python scripts:
   runs ~cmdstanpy.CmdStanModel~'s ~sample~ method, runs diagnostics on the
   output and writes some csv files.
 
+I've been using python 3.7.2 - everything will probably work for later versions
+but maybe not older ones.
+
+Python package dependencies:
+- cmdstanpy
+- pandas
+- numpy
+- quilt
+- component-contribution
+
 
 * A bit more detail about thermodynamics
 It is possible to predict unmeasured reactions due to the following two helpful
@@ -82,7 +92,7 @@ where
   
 
 * Input
-The input is follows
+The input is follows:
 - A stoichiometric matrix (e.g. ~data/stoichiometry.csv~) specifying the
   reactions and compounds of interest and indicating which reactions consume
   and produce which compounds.
@@ -92,6 +102,9 @@ The input is follows
   measured and the measured value of standard-condition delta g of reaction. In
   future I aim to also take into account experimental conditions and method, so
   these should also ideally be specified.
+
+The script ~fetch_data.py~ gets all these things from the same source as Noor
+et al using their fantastic quilt data.
 
 * References
 - Noor, E., Haraldsd\'ottir, Hulda S., Milo, R., & Fleming,

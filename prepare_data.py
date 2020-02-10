@@ -1,3 +1,6 @@
+"""Turn csvs from the data folder into a Stan-friendly .json file."""
+
+
 import pandas as pd
 from cmdstanpy.utils import jsondump
 from typing import Dict, Union, Iterable

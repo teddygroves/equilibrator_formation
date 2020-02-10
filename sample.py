@@ -1,8 +1,6 @@
 """Get samples from the model at MODEL_PATH and the data at DATA_PATH."""
 
-import arviz as az
-import pandas as pd
-import numpy as np
+
 from cmdstanpy import CmdStanModel
 from typing import List
 import os
