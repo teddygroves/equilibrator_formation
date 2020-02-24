@@ -16,24 +16,42 @@ data {
 parameters {
   real log_sigma;  // measurement error 
   real log_tau;    // sd of compound fe difference from sum of group fes
-  real<lower=0> sd_gfe;
+  real log_sd_gfe;
   real mu_gfe;
+  real<lower=1> nu;
   vector[N_compound] fe_z;
   vector[N_group] gfe_z;
 }
 model {
   real sigma = exp(log_sigma);
   real tau = exp(log_tau);
+  real sd_gfe = exp(log_sd_gfe);
   vector[N_group] group_formation_energy = mu_gfe + gfe_z * sd_gfe;
   vector[N_compound] formation_energy = G * group_formation_energy + fe_z * tau;
   vector[N_reaction] standard_delta_g = S' * formation_energy;
+  nu ~ gamma(2, 0.1);
   fe_z ~ std_normal();
   gfe_z ~ std_normal();
   mu_gfe ~ std_normal();
-  sd_gfe ~ normal(0, 3);
+  log_sd_gfe ~ std_normal();
   log_sigma ~ normal(0, 1);
   log_tau ~ normal(0, 1);
   if (likelihood == 1){
-    y ~ normal(standard_delta_g[rxn_ix], sigma);
+    y ~ student_t(nu, standard_delta_g[rxn_ix], sigma);
+  }
+}
+generated quantities {
+  vector[N_measurement] log_lik;
+  vector[N_reaction] standard_delta_g;
+  {
+    real sigma = exp(log_sigma);
+    real tau = exp(log_tau);
+    real sd_gfe = exp(log_sd_gfe);
+    vector[N_group] group_formation_energy = mu_gfe + gfe_z * sd_gfe;
+    vector[N_compound] formation_energy = G * group_formation_energy + fe_z * tau;
+    standard_delta_g = S' * formation_energy;
+  }
+  for (n in 1:N_measurement){
+    log_lik[n] = student_t_lpdf(y[n] | nu, standard_delta_g[rxn_ix[n]], sigma);
   }
 }

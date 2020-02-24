@@ -5,17 +5,20 @@ from cmdstanpy import CmdStanModel
 from typing import List
 import os
 
-MODEL_PATH = 'stan_code/model_nc.stan'
-DATA_PATH = 'data/input_data_toy.json'
-OUTPUT_PATH = './samples/toy_data'
+MODEL_PATH = 'stan_code/model_simple.stan'
+DATA_PATH = 'data/input_data_standard_dg.json'
+OUTPUT_DIR = './samples/standard_dg'
 SAMPLE_KWARGS = {
-    'output_dir': './samples/toy_data',
-    'warmup_iters': 20,
-    'sampling_iters': 10,
-    'max_treedepth': 10,
-    'save_warmup': True
+    'output_dir': OUTPUT_DIR,
+    'warmup_iters': 1000,
+    'chains': 4,
+    'sampling_iters': 1000,
+    'max_treedepth': 15,
+    'save_warmup': True,
+    'adapt_delta': 0.8,
+    # 'metric': 'dense'
 }
-DELETE_PREVIOUS_OUTPUTS = True
+DELETE_PREVIOUS_OUTPUTS = False
 
 
 def delete_outputs(target_path: str, files_to_keep: List[str]):
@@ -33,5 +36,5 @@ if __name__ == '__main__':
     print(fit.diagnose())
     if DELETE_PREVIOUS_OUTPUTS:
         files_to_keep = list(map(os.path.basename, fit.runset.csv_files))
-        delete_outputs(OUTPUT_PATH, files_to_keep)
+        delete_outputs(OUTPUT_DIR, files_to_keep)
 
