@@ -23,44 +23,41 @@ transformed data {
   vector[N_measurement_train] y_train_std = (y_train - mean_y_train) / sd_y_train;
 }
 parameters {
-  // measurement error (lower bound is best realistic measurment error)
-  vector<lower=0.01>[N_measurement_type] sigma_std; 
-  // group formation energy hyperparameters
-  real<lower=0> tau_g_std;
-  real mu_g_std;
-  real<lower=0.01> sigma_g_std;  // group additivity validity
-  // compound formation energy on standard normal scale
-  vector[N_compound] fe_c_z;
-  // group formation energy on standard normal scale
-  vector[N_group] fe_g_z;
+  vector<lower=0.01>[N_measurement_type] sigma_std;  // measurement error (standardised scale)
+  real<lower=0> tau_g_std;                           // group formation energy variation (standardised scale)
+  real mu_g_std;                                     // group formation energy mean (standardised scale)
+  real<lower=0.01> sigma_g_std;                      // compound formation energy variation from predicted (standardised scale)
+  vector[N_compound] fe_c_z;                         // compound formation energy deviations (unit normal scale)
+  vector[N_group] fe_g_z;                            // group formation energy deviations (unit normal scale)
 }
 transformed parameters {
-  real mu_g = mean_y_train + mu_g_std * sd_y_train;
-  vector[N_measurement_type] sigma = sigma_std * sd_y_train;
-  real tau_g = tau_g_std * sd_y_train;
-  real sigma_g = sigma_g_std * sd_y_train;
+  real mu_g = mean_y_train + mu_g_std * sd_y_train;  // group formation energy mean (interpretable scale)
+  vector[N_measurement_type] sigma = sigma_std * sd_y_train;  // measurement error (interpretable scale)
+  real tau_g = tau_g_std * sd_y_train;               // group formation energy variation (interpretable scale)
+  real sigma_g = sigma_g_std * sd_y_train;           // compound formation energy variation from predicted (interpretable scale)
 }
 model {
-  vector[N_group] formation_energy_g_std = mu_g_std + fe_g_z * tau_g_std;
-  vector[N_compound] formation_energy_c_std = G * formation_energy_g_std + fe_c_z * sigma_g_std;
-  vector[N_reaction_train] standard_delta_g_std = S_train' * formation_energy_c_std;
-  sigma ~ normal(10, 3);     // unstandardised measurement error
-  sigma_g ~ normal(50, 30);  // don't know how accurate the additivity assumption is
-  tau_g ~ normal(200, 50);   // group formation energies vary less than compound ones
-  mu_g ~ normal(-300, 75);
   fe_c_z ~ std_normal();
   fe_g_z ~ std_normal();
+  // informative priors on interpretable scale (no jacobian adjustments as transformations are linear)
+  sigma ~ normal(10, 3);
+  sigma_g ~ normal(50, 30);
+  tau_g ~ normal(200, 50);
+  mu_g ~ normal(-300, 75);
+  // likelihood on standardised scale to keep untransformed parameters roughly unit-scale
   if (likelihood == 1){
+    vector[N_group] formation_energy_g_std = mu_g_std + fe_g_z * tau_g_std;
+    vector[N_compound] formation_energy_c_std = G * formation_energy_g_std + fe_c_z * sigma_g_std;
+    vector[N_reaction_train] standard_delta_g_std = S_train' * formation_energy_c_std;
     y_train_std ~ normal(standard_delta_g_std[rxn_ix_train], sigma_std[measurement_type_train]);
   }
 }
 generated quantities {
   vector[N_measurement_test] log_lik;
   vector[N_measurement_test] y_pred;
-  vector[N_reaction_test] standard_delta_g_test;
   vector[N_group] group_formation_energy = mu_g + fe_g_z * tau_g;
   vector[N_compound] compound_formation_energy = G * group_formation_energy + fe_c_z * sigma_g;
-  standard_delta_g_test = S_test' * compound_formation_energy;
+  vector[N_reaction_test] standard_delta_g_test = S_test' * compound_formation_energy;
   for (n in 1:N_measurement_test){
     log_lik[n] = normal_lpdf(y_test[n] | standard_delta_g_test[rxn_ix_test[n]], sigma[measurement_type_test[n]]);
     y_pred[n] = normal_rng(standard_delta_g_test[rxn_ix_test[n]], sigma[measurement_type_test[n]]);
