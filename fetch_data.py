@@ -1,5 +1,7 @@
 from equilibrator_cache import create_compound_cache_from_quilt, Reaction, R, Q_, FARADAY
 from equilibrator_cache.exceptions import MissingDissociationConstantsException
+from component_contribution.training_data import FullTrainingData
+from component_contribution import ComponentContributionTrainer
 from prepare_data import get_stoichiometric_matrix
 import numpy as np
 import os
@@ -8,23 +10,15 @@ import pint
 import quilt
 import warnings
 
-MEASUREMENT_COLS = [
-    'method',
-    'eval',
-    'enzyme_name',
+QUANTITY_COLS = [
     'temperature',
     'ionic_strength',
     'p_h',
     'p_mg',
-    'formula',
-    'stoichiometry',
-    'reference',
-    'K_prime',
-    'standard_dg',
-    'standard_dg_default',
-    'standard_dg_prime'
+    'standard_dg_prime',
+    'standard_dg'
 ]
-OUTPUT_DIR = 'data/attempt_2'
+OUTPUT_DIR = 'data'
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     Q_([])
@@ -72,97 +66,58 @@ def get_stoichiometry_from_formula(reaction: str, ccache):
 def main():
     pkg = quilt.load('equilibrator/component_contribution')
     ccache = create_compound_cache_from_quilt()
-    redox_measurements = (
-        pkg.train.redox()
-        .copy()
-        .assign(
-            method='redox',
-            eval='redox',
-            ccid_ox=lambda df: df['CID_ox'].apply(ccache.get_compound).apply(lambda c: int(c.id)),
-            ccid_red=lambda df: df['CID_red'].apply(ccache.get_compound).apply(lambda c: int(c.id)),
-            reaction=lambda df: df.apply(lambda row: Reaction({
-                ccache.get_compound(row['CID_ox']): -1,
-                ccache.get_compound(row['CID_red']): 1
-            }), axis=1),
-            stoichiometry=lambda df: df.apply(lambda row: {
-                row['ccid_ox']: -1, row['ccid_red']: 1
-            }, axis=1),
-            formula=lambda df: df['CID_ox'].astype(str) + ' = ' + df['CID_red'].astype(str),
-            delta_e=lambda df: df['nH_red'] - df['nH_ox'] - df['charge_red'] + df['charge_ox'],
-            standard_dg_prime=lambda df: -FARADAY.m * df['standard_E_prime'] * df['delta_e'],
-        )
-    )
-    formation_measurements = (
-        pkg.train.formation_energies_transformed()
-        .dropna(subset=['standard_dg_prime'])
-        .copy()
-        .assign(
-            method='formation',
-            eval='formation',
-            formula=lambda df: '+ ' + df['cid'],
-            ccid=lambda df: df['cid'].apply(lookup_compound, ccache=ccache),
-            reaction=lambda df:
-            df['ccid'].apply(
-                lambda c: Reaction({ccache.get_compound_by_internal_id(c): 1})
-            ),
-            stoichiometry=lambda df: [{int(ccid): 1} for ccid in df['ccid'].values]
-        )
-    )
-    tecrdb_measurements = (
-        pkg.train.TECRDB().copy()
-        .replace('nan', np.nan)
-        .assign(
-            formula=lambda df: df['reaction'],
-            reaction=lambda df: df['formula'].apply(
-                lambda f: Reaction.parse_formula(ccache.get_compound, f)
-            ),
-            stoichiometry=lambda df:
-            df['formula'].apply(get_stoichiometry_from_formula, ccache=ccache),
-            standard_dg_prime=lambda df: -R*df['temperature'] * np.log(df['K_prime'])
-        )
-    )
-    measurements = (
-        pd.concat(
-            [redox_measurements, formation_measurements, tecrdb_measurements], ignore_index=True
-        )
-        .assign(
-            standard_dg=lambda df: df.apply(transform_dg, ccache=ccache, axis=1),
-            standard_dg_default=lambda df:
-                df.fillna({'ionic_strength': 0.25})
-                .apply(transform_dg, ccache=ccache, axis=1),
-        )
-        [MEASUREMENT_COLS]
-    )
-    cccompounds = list(map(
-        ccache.get_compound_by_internal_id,
-        measurements['stoichiometry'].map(lambda d: list(d.keys())).explode().unique()
-    ))
-    formation_energy_cc = pd.Series(
-        pkg.parameters.dG0_cc(),
-        index=pkg.parameters.train_S().index,
-        name='formation_energy_cc'
-    )
-    compounds = pd.DataFrame.from_records(
-        {'mass': c.mass,
-         'compound_id': c.id,
-         'inchi_key': c.inchi_key}
-        for c in cccompounds
-    ).join(formation_energy_cc, on='compound_id')
-    reactions = (
-        measurements.groupby('formula')['stoichiometry'].first()
-        .reset_index()
-        .assign(reaction_id=lambda df: range(1, len(df) + 1))
-    )
-    measurements = (
-        measurements.merge(reactions[['formula', 'reaction_id']], on='formula')
-    )
-    S = get_stoichiometric_matrix(measurements)
-    standard_dg_cc = (S.T @ formation_energy_cc.reindex(S.index)).rename('standard_dg_cc')
-    measurements = measurements.join(standard_dg_cc, on='reaction_id')
-    measurements.to_csv(os.path.join(OUTPUT_DIR, 'measurements.csv'))
-    compounds.to_csv(os.path.join(OUTPUT_DIR, 'compounds.csv'))
-    reactions.to_csv(os.path.join(OUTPUT_DIR, 'reactions.csv'))
+    td = FullTrainingData(ccache)
+
+    group_df = pkg.parameters.group_definitions()
+    G = ComponentContributionTrainer.group_incidence_matrix(td, group_df)
+    G.index = map(lambda c: c.id, G.index)
+    G.index.name = 'compound_id'
+
+    m = td.reaction_df.copy()
+    m['stoichiometry'] = m.apply(lambda row: {k.id: v for k, v in row['reaction'].items()}, axis=1)
+    m['reaction_id'] = m['reaction'].apply(hash)
+    for qcol in QUANTITY_COLS:
+        m[qcol] = m[qcol].apply(lambda q: q.magnitude)
+    S = td.stoichiometric_matrix.copy()
+    S.columns = m['reaction_id']
+    S.index = map(lambda c: c.id, S.index)
+    S.index.name = 'compound_id'
+    S_unique = S.T.groupby(level=0).first().T
+
+    compounds = pd.DataFrame({
+        'compound_id': map(lambda c: c.id, td.compounds),
+        'inchi_key': map(lambda c: c.inchi_key, td.compounds),
+        'mass': map(lambda c: c.mass, td.compounds),
+        'formation_energy_cc': pkg.parameters.dG0_cc(),
+        'formation_energy_rc': pkg.parameters.dG0_rc(),
+
+    })
+    reactions = pd.DataFrame({
+        'reaction_id': map(hash, m['reaction'].unique()),
+        'stoichiometry': map(lambda r: {
+            k.id: v for k, v in r.sparse.items()
+        }, m['reaction'].unique())
+    })
+    groups = pd.DataFrame({
+        'name': [n  if type(n) == str else 'compound:' + str(n.id) for n in G.columns],
+        'group_id': range(1, len(G.columns) + 1),
+        'formation_energy_gc': pkg.parameters.dG0_gc(),
+    })
+    G.columns = groups['group_id']
+    G.columns.name = 'group_id'
+
+    m['standard_dg_cc'] = (S.T @ compounds['formation_energy_cc'].values).values
+    m['standard_dg_rc'] = (S.T @ compounds['formation_energy_rc'].values).values
+    m['standard_dg_gc'] = (S.T @ G @ groups['formation_energy_gc'].values).values
+
+    
+    S_unique.to_csv(os.path.join(OUTPUT_DIR, 'stoichiometry_cc.csv'))
+    G.to_csv(os.path.join(OUTPUT_DIR, 'group_incidence_cc.csv'))
+    m.to_csv(os.path.join(OUTPUT_DIR, 'measurements_cc.csv'))
+    compounds.to_csv(os.path.join(OUTPUT_DIR, 'compounds_cc.csv'))
+    reactions.to_csv(os.path.join(OUTPUT_DIR, 'reactions_cc.csv'))
+    groups.to_csv(os.path.join(OUTPUT_DIR, 'groups_cc.csv'))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

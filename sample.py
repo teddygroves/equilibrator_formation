@@ -6,13 +6,13 @@ from typing import List
 import os
 
 MODEL_PATH = 'stan_code/model_simple.stan'
-DATA_PATH = 'data/input_data_standard_dg.json'
+DATA_PATH = 'data/input_data_non_default_ionic_strength.json'
 OUTPUT_DIR = './samples/standard_dg'
 SAMPLE_KWARGS = {
     'output_dir': OUTPUT_DIR,
-    'warmup_iters': 1000,
-    'chains': 4,
-    'sampling_iters': 1000,
+    'warmup_iters': 50,
+    'chains': 2,
+    'sampling_iters': 50,
     'max_treedepth': 15,
     'save_warmup': True,
     'adapt_delta': 0.8,
