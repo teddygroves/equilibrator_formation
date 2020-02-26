@@ -15,7 +15,7 @@ SAMPLE_KWARGS = {
     'sampling_iters': 50,
     'max_treedepth': 15,
     'save_warmup': True,
-    'adapt_delta': 0.8,
+    'adapt_delta': 0.9,
     # 'metric': 'dense'
 }
 DELETE_PREVIOUS_OUTPUTS = False

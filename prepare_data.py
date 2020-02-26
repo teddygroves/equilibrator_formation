@@ -74,23 +74,17 @@ def main():
     measurements['reaction_id_stan'] = measurements['reaction_id'].map(reaction_codes.get).values
     measurements['eval_stan'] = measurements['eval'].map(eval_codes.get).values
     stan_input = {
-        'N_measurement_train': len(measurements),
-        'N_measurement_test': len(measurements),
-        'N_reaction_train': S.shape[1],
-        'N_reaction_test': S.shape[1],
+        'N_measurement': len(measurements),
+        'N_reaction': S.shape[1],
         'N_compound': S.shape[0],
         'N_group': G.shape[1],
         'G': G.values.tolist(),
         'N_measurement_type': len(measurement_types),
-        'y_train': measurements['standard_dg'].values,
-        'y_test': measurements['standard_dg'].values,
-        'rxn_ix_train': measurements['reaction_id_stan'].values,
-        'rxn_ix_test': measurements['reaction_id_stan'].values,
-        'measurement_type_train': measurements['eval'].map(eval_codes).values,
-        'measurement_type_test': measurements['eval'].map(eval_codes).values,
+        'y': measurements['standard_dg'].values,
+        'rxn_ix': measurements['reaction_id_stan'].values,
+        'measurement_type': measurements['eval'].map(eval_codes).values,
         'likelihood': int(LIKELIHOOD),
-        'S_train': S.values.tolist(),
-        'S_test': S.values.tolist(),
+        'S': S.values.tolist(),
     }
     jsondump(os.path.join(OUTPUT_DIR, JSON_OUTPUT_FILENAME), stan_input)
     rdump(os.path.join(OUTPUT_DIR, JSON_OUTPUT_FILENAME.replace('json', 'R')), stan_input)
