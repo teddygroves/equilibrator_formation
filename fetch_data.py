@@ -1,8 +1,6 @@
-from equilibrator_cache import create_compound_cache_from_quilt, Reaction, R, Q_, FARADAY
-from equilibrator_cache.exceptions import MissingDissociationConstantsException
+from equilibrator_cache import create_compound_cache_from_quilt
 from component_contribution.training_data import FullTrainingData
 from component_contribution import ComponentContributionTrainer
-from prepare_data import get_stoichiometric_matrix
 import numpy as np
 import os
 import pandas as pd
@@ -19,48 +17,10 @@ QUANTITY_COLS = [
     'standard_dg'
 ]
 OUTPUT_DIR = 'data'
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore")
-    Q_([])
 
 
 def tidy_zeros(df):
     return df.mask(df == 0).stack().unstack().fillna(0)
-
-
-def lookup_compound(cid: str, ccache):
-    r, rid  = cid.split(':')
-    return ccache.get_compound_from_registry(r.lower(), rid).id
-
-
-def transform_dg(row, ccache):
-    # rxn = Reaction.parse_formula(ccache.get_compound, row['formula'])
-    try:
-        ddg_over_rt = row['reaction'].transform(
-            p_h=Q_(row['p_h']),
-            ionic_strength=Q_(row['ionic_strength'], "M"),
-            temperature=Q_(row['temperature'], "K"),
-        )
-        return row['standard_dg_prime'] - (ddg_over_rt * R * row['temperature']).m
-    except MissingDissociationConstantsException:
-        return np.nan
-
-        
-
-def get_stoichiometry_from_formula(reaction: str, ccache):
-    def parse_stoich(s, is_substrate):
-        split = s.strip().split(' ')
-        stoich = float(split[0]) if len(split) == 2 else 1.0
-        if is_substrate:
-            stoich *= -1
-        return lookup_compound(split[-1], ccache), stoich
-    out = {}
-    for side_str, is_substrate in zip(reaction.split('='), [True, False]):
-        cmpds = side_str.split('+')
-        for cmpd in cmpds:
-            ccid, stoich = parse_stoich(cmpd, is_substrate)
-            out[ccid] = stoich
-    return out
 
 
 def main():
@@ -71,7 +31,7 @@ def main():
     group_df = pkg.parameters.group_definitions()
     G = ComponentContributionTrainer.group_incidence_matrix(td, group_df)
     G.index = map(lambda c: c.id, G.index)
-    G.index.name = 'compound_id'
+    G.index.name = 'group_id'
 
     m = td.reaction_df.copy()
     m['stoichiometry'] = m.apply(lambda row: {k.id: v for k, v in row['reaction'].items()}, axis=1)
