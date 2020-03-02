@@ -1,6 +1,10 @@
 from equilibrator_cache import create_compound_cache_from_quilt
 from component_contribution.training_data import FullTrainingData
-from component_contribution import ComponentContributionTrainer
+from component_contribution import (
+    ComponentContributionTrainer,
+    DEFAULT_QUILT_VERSION,
+    DEFAULT_QUILT_PKG
+)
 import numpy as np
 import os
 import pandas as pd
@@ -17,6 +21,7 @@ QUANTITY_COLS = [
     'standard_dg'
 ]
 OUTPUT_DIR = 'data'
+OVERWRITE_QUILT = False
 
 
 def tidy_zeros(df):
@@ -24,6 +29,11 @@ def tidy_zeros(df):
 
 
 def main():
+    quilt.install(
+        package=DEFAULT_QUILT_PKG,
+        version=DEFAULT_QUILT_VERSION,
+        force=OVERWRITE_QUILT
+    )
     pkg = quilt.load('equilibrator/component_contribution')
     ccache = create_compound_cache_from_quilt()
     td = FullTrainingData(ccache)
