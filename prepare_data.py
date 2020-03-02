@@ -50,14 +50,15 @@ def get_S(S_in, measurements):
 
 
 def get_G(G_in, S):
-    return G_in.loc[S.index].pipe(tidy_zeros).copy()
+    G = G_in.loc[S.index].pipe(tidy_zeros).copy()
+    is_decomposable = G.replace(0, np.nan).stack().groupby('compound_id').size() != 1
+    return G.loc[is_decomposable].pipe(tidy_zeros)
 
 
 def main():
     measurements_in = pd.read_csv(os.path.join(INPUT_DIR, 'measurements_cc.csv'), index_col=0)
     S_in = pd.read_csv(os.path.join(INPUT_DIR, 'stoichiometry_cc.csv'), index_col=0)
     G_in = pd.read_csv(os.path.join(INPUT_DIR, 'group_incidence_cc.csv'), index_col=0)
-    compounds = pd.read_csv(os.path.join(INPUT_DIR, 'compounds_cc.csv'))
     reactions = pd.read_csv(os.path.join(INPUT_DIR, 'reactions_cc.csv'))
     S_in.columns = map(int, S_in.columns)
     S_in.columns.name = 'reaction_id'
@@ -73,15 +74,23 @@ def main():
     eval_codes = dict(zip(measurement_types, range(1, len(measurement_types) + 1)))
     measurements['reaction_id_stan'] = measurements['reaction_id'].map(reaction_codes.get).values
     measurements['eval_stan'] = measurements['eval'].map(eval_codes.get).values
+    compound_codes = pd.Series(
+        range(1, S.shape[0] + 1), index=S.index, name='compound_id_stan'
+    )
+    compound_ix_decomp = compound_codes.loc[G.index]
+    compound_ix_undecomp = compound_codes.drop(G.index)
     stan_input = {
         'N_measurement': len(measurements),
         'N_reaction': S.shape[1],
-        'N_compound': S.shape[0],
+        'N_decomp': G.shape[0],
+        'N_undecomp': S.shape[0] - G.shape[0],
         'N_group': G.shape[1],
         'G': G.values.tolist(),
         'N_measurement_type': len(measurement_types),
         'y': measurements['standard_dg'].values,
         'rxn_ix': measurements['reaction_id_stan'].values,
+        'compound_ix_decomp': compound_ix_decomp.values,
+        'compound_ix_undecomp': compound_ix_undecomp.values,
         'measurement_type': measurements['eval'].map(eval_codes).values,
         'likelihood': int(LIKELIHOOD),
         'S': S.values.tolist(),

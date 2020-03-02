@@ -5,7 +5,7 @@ from cmdstanpy import CmdStanModel
 from typing import List
 import os
 
-MODEL_PATH = 'stan_code/model_simple.stan'
+MODEL_PATH = 'stan_code/model.stan'
 DATA_PATH = 'data/input_data_non_default_ionic_strength.json'
 OUTPUT_DIR = './samples/standard_dg'
 SAMPLE_KWARGS = {
