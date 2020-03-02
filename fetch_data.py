@@ -8,9 +8,7 @@ from component_contribution import (
 import numpy as np
 import os
 import pandas as pd
-import pint
 import quilt
-import warnings
 
 QUANTITY_COLS = [
     'temperature',
