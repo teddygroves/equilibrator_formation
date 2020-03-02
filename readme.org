@@ -21,7 +21,8 @@ The modelling is done through the following python scripts:
 
 - ~fetch_data.py~ fetches input data and writes it to the ~data~ directory.
 - ~prepare_data.py~ reads files from the ~data~ directory and writes a ~.json~
-  file that can be used as an input for cmdstanpy.
+  file that can be used as an input for cmdstanpy and a ~.R~ file that can be
+  used as input for cmdstanr.
 - ~sample.py~ reads ~json~ files (data and optionally initial parameter values)
   runs ~cmdstanpy.CmdStanModel~'s ~sample~ method, runs diagnostics on the
   output and writes some csv files.
@@ -36,15 +37,14 @@ Python package dependencies:
 - quilt (only used in ~fetch_data.py~)
 - component-contribution (only used in ~fetch_data.py~)
 
-
 * A bit more detail about biochemical thermodynamics
 It is possible to predict unmeasured reactions due to the following two helpful
 principles.
 
-The first, which follows from thermodynamic principles, is that the Gibbs free
-energy of any reaction is related to the formation energies (i.e. the energy
-stored or released by creating the compounds out of elements) of its products
-and substrates:
+The first, which follows from the laws of thermodynamics, is that the Gibbs
+free energy of any reaction is related to the formation energies (i.e. the
+energy stored or released by creating the compounds out of elements) of its
+products and substrates:
 
 \Delta_rG = \sum_{products}\Delta_fG \div \sum_{substrates} \Delta_fG
 
@@ -55,7 +55,6 @@ approximately the sum of the formation energies of those components. I.e.
 \Delta_fG \approx \sum_{groups}\Delta_gG 
 
 For more about this topic check out [[http://equilibrator.weizmann.ac.il/static/classic_rxns/index.html][this great documentation]].
-
 
 * Statistical model
 
@@ -92,15 +91,14 @@ where
 - tau is a model parameter representing the unknown extent to which compound
   formation energies tend to deviate from the group additivity prediction.
   
-
 * Input
 The input is follows:
-- A stoichiometric matrix (e.g. ~data/stoichiometry.csv~) specifying the
+- A stoichiometric matrix (e.g. ~data/stoichiometry_cc.csv~) specifying the
   reactions and compounds of interest and indicating which reactions consume
   and produce which compounds.
-- A group incidence matrix (e.g. ~data/group_incidence.csv~) indicating how
+- A group incidence matrix (e.g. ~data/group_incidence_cc.csv~) indicating how
   each compound decomposes into chemical groups.
-- A table of measurements (e.g. ~measurements.csv~) indicating the reaction
+- A table of measurements (e.g. ~measurements_cc.csv~) indicating the reaction
   measured and the measured value of standard-condition delta g of reaction. In
   future I aim to also take into account experimental conditions and method, so
   these should also ideally be specified.
