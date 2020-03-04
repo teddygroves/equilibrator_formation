@@ -79,7 +79,7 @@ columns representing reactions
   their positions in \Delta_rG_{obs}.
   
 The group additivity principle is incorporated with the following prior
-distribution for compound formation energies:
+distribution for decomposable compounds' formation energies:
 
 \Delta_fG &\sim N(*G*\Delta_gG, \tau)
 
@@ -90,7 +90,7 @@ where
   formation energies.
 - tau is a model parameter representing the unknown extent to which compound
   formation energies tend to deviate from the group additivity prediction.
-  
+
 * Input
 The input is follows:
 - A stoichiometric matrix (e.g. ~data/stoichiometry_cc.csv~) specifying the
