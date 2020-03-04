@@ -65,9 +65,9 @@ transformed parameters {
   }
 }
 model {
-  fe_decomp_z ~ std_normal();
-  fe_undecomp_z ~ std_normal();
-  fe_g_z ~ std_normal();
+  fe_decomp_z ~ student_t(4, 0, 1);
+  fe_undecomp_z ~ student_t(4, 0, 1);
+  fe_g_z ~ student_t(4, 0, 1);
   // informative priors on interpretable scale
   // (no jacobian adjustments as transformations are linear)
   sigma[1] ~ normal(10, 10);
@@ -82,7 +82,7 @@ model {
   // (to keep untransformed parameters roughly unit-scale)
   if (likelihood == 1){
     vector[N_reaction] standard_delta_g_std = S' * formation_energy_c_std;
-    y_std ~ normal(standard_delta_g_std[rxn_ix], sigma_std[measurement_type]);
+    y_std ~ student_t(4, standard_delta_g_std[rxn_ix], sigma_std[measurement_type]);
   }
 }
 generated quantities {
@@ -97,8 +97,8 @@ generated quantities {
     compound_formation_energy = mean_y + formation_energy_c_std * sd_y;
     standard_delta_g = mean_y + (S' * formation_energy_c_std) * sd_y;
     for (n in 1:N_measurement){
-      log_lik[n] = normal_lpdf(y_std[n] | standard_delta_g_std[rxn_ix[n]], sigma_std[measurement_type[n]]);
-      y_rep[n] = mean_y + normal_rng(standard_delta_g_std[rxn_ix[n]], sigma_std[measurement_type[n]]) * sd_y;
+      log_lik[n] = student_t_lpdf(y_std[n] | 4, standard_delta_g_std[rxn_ix[n]], sigma_std[measurement_type[n]]);
+      y_rep[n] = mean_y + student_t_rng(4, standard_delta_g_std[rxn_ix[n]], sigma_std[measurement_type[n]]) * sd_y;
     }
   }
 }
