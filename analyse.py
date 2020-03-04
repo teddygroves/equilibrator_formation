@@ -41,6 +41,8 @@ def main():
         csvs,
         log_likelihood='log_lik',
         posterior_predictive='y_rep',
+        observed_data='data/input_data_non_default_ionic_strength.R',
+        observed_data_var='y',
         coords={
             'compound': S.index,
             'reaction': S.columns,
@@ -133,6 +135,30 @@ def main():
     axes[1].set_title('Groups', y=0.86)
     f.suptitle("Comparison of Formation energy estimates: Structured Bayesian regression vs Component Contribution")
     plt.savefig('plots/formation_energy_comparison.png', facecolor=f.get_facecolor())
+
+    # tecrdb residuals by reaction
+    resids = (
+        infd.posterior_predictive['y_rep'].to_series().unstack()
+        - measurements['standard_dg']
+    )
+    d = measurements.loc[lambda df: df['eval'] == 'A']
+    g = resids.T.groupby(d['enzyme_name'])
+    ticker = 0
+    f, ax = plt.subplots(figsize=[12, 5])
+    for enz_name, df in g:
+        enz_resids = df.T.stack().reset_index()
+        n = len(enz_resids)
+        mean_val = enz_resids[0].mean()
+        ax.text(ticker + n // 2, mean_val, enz_name, fontsize=5)
+        ax.scatter(np.linspace(ticker, ticker + n, n), enz_resids[0], s=3, alpha=0.05)
+        ticker += n
+    ax.axes.get_xaxis().set_visible(False)
+    ax.set_xlabel('measurement')
+    ax.set_ylabel('observed standard delta g - predicted standard delta g')
+    ax.set_title('Residuals by measurement, coloured by enzyme')
+    ax.axhline(0, c='r')
+    plt.savefig('plots/residuals.png', facecolor=f.get_facecolor())
+
 
 if __name__ == '__main__':
     main()
