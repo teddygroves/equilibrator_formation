@@ -51,11 +51,13 @@ def main():
     S.index = map(lambda c: c.id, S.index)
     S.index.name = 'compound_id'
     S_unique = S.T.groupby(level=0).first().T
-
+    sd_cc = np.sqrt(np.diag(pkg.parameters.cov_dG0()))
     compounds = pd.DataFrame({
         'compound_id': map(lambda c: c.id, td.compounds),
         'inchi_key': map(lambda c: c.inchi_key, td.compounds),
         'mass': map(lambda c: c.mass, td.compounds),
+        'cc_low': pkg.parameters.dG0_cc() - 2 * sd_cc,
+        'cc_high': pkg.parameters.dG0_cc() + 2 * sd_cc,
         'formation_energy_cc': pkg.parameters.dG0_cc(),
         'formation_energy_rc': pkg.parameters.dG0_rc(),
 
