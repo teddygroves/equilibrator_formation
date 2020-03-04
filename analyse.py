@@ -134,3 +134,5 @@ def main():
     f.suptitle("Comparison of Formation energy estimates: Structured Bayesian regression vs Component Contribution")
     plt.savefig('plots/formation_energy_comparison.png', facecolor=f.get_facecolor())
 
+if __name__ == '__main__':
+    main()
